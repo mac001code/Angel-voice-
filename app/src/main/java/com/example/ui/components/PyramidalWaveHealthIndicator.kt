@@ -74,14 +74,24 @@ import com.example.ui.theme.CrimsonCoral
 import com.example.ui.theme.ElevatedSlate
 import com.example.ui.theme.ElevatedSlateVariant
 import com.example.ui.theme.EmeraldGreen
+import com.example.ui.theme.Hairline
+import com.example.ui.theme.Ink
+import com.example.ui.theme.Mist
+import com.example.ui.theme.PaletteVoid
 import com.example.ui.theme.PantallaApagada
 import com.example.ui.theme.Papel
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextSecondary
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
+
+enum class VisualizerMode {
+    PYRAMID_DISPLACEMENT,
+    JOY_DIVISION_TERRAIN
+}
 
 /**
  * Indicador de Salud de Pirámide Fluida Orgánica y Onda Dinámica Central (VFX 3D Shader-like).
@@ -159,6 +169,7 @@ fun PyramidalWaveHealthIndicator(
 
     // Store calculated node coordinates for touch hit-testing
     var nodePositions by remember { mutableStateOf<List<Pair<Creator, Offset>>>(emptyList()) }
+    var visualizerMode by remember { mutableStateOf(VisualizerMode.PYRAMID_DISPLACEMENT) }
 
     Column(
         modifier = modifier
@@ -184,23 +195,20 @@ fun PyramidalWaveHealthIndicator(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "SALUD DEL CREADOR",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        color = Papel,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        letterSpacing = 1.sp
+                    text = "Salud de creadores",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        color = Ink,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.2.sp
                     )
                 )
             }
 
             Text(
-                text = "$healthPercentage% EFICIENCIA",
-                style = MaterialTheme.typography.labelSmall.copy(
+                text = "$healthPercentage% eficiencia",
+                style = MaterialTheme.typography.bodyMedium.copy(
                     color = if (healthPercentage >= 80) EmeraldGreen else AmberGold,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp
+                    fontWeight = FontWeight.Normal
                 )
             )
         }
@@ -208,82 +216,282 @@ fun PyramidalWaveHealthIndicator(
         Spacer(modifier = Modifier.height(10.dp))
 
         // Central Fluid Pyramid Canvas with Real-Time Displacement Map & Rim Light
-            Box(
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(245.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0xFF030406))
+                .border(0.6.dp, CardBorder, RoundedCornerShape(4.dp))
+        ) {
+            Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(230.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(Color(0xFF060709))
-                    .border(0.6.dp, CardBorder, RoundedCornerShape(3.dp))
-            ) {
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(230.dp)
-                        .pointerInput(creators) {
-                            detectTapGestures { tapOffset ->
-                                // Hit test with generous touch target radius (36dp)
-                                val touchRadiusPx = 36.dp.toPx()
-                                val hit = nodePositions.minByOrNull { (_, offset) ->
-                                    val dx = offset.x - tapOffset.x
-                                    val dy = offset.y - tapOffset.y
-                                    sqrt(dx * dx + dy * dy)
-                                }
+                    .height(245.dp)
+                    .pointerInput(creators, visualizerMode) {
+                        detectTapGestures { tapOffset ->
+                            val touchRadiusPx = 36.dp.toPx()
+                            val hit = nodePositions.minByOrNull { (_, offset) ->
+                                val dx = offset.x - tapOffset.x
+                                val dy = offset.y - tapOffset.y
+                                sqrt(dx * dx + dy * dy)
+                            }
 
-                                if (hit != null) {
-                                    val dist = sqrt(
-                                        (hit.second.x - tapOffset.x) * (hit.second.x - tapOffset.x) +
-                                        (hit.second.y - tapOffset.y) * (hit.second.y - tapOffset.y)
-                                    )
-                                    if (dist <= touchRadiusPx) {
-                                        // Provide crisp tactile confirmation (haptic feedback) on node selection
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        // Tap on node reveals or switches creator details
-                                        onSelectCreator(hit.first)
-                                    }
+                            if (hit != null) {
+                                val dist = sqrt(
+                                    (hit.second.x - tapOffset.x) * (hit.second.x - tapOffset.x) +
+                                    (hit.second.y - tapOffset.y) * (hit.second.y - tapOffset.y)
+                                )
+                                if (dist <= touchRadiusPx) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onSelectCreator(hit.first)
                                 }
                             }
                         }
-                ) {
-                    val width = size.width
-                    val height = size.height
+                    }
+            ) {
+                val width = size.width
+                val height = size.height
 
-                    // Pure black background matching MOUNTAIN TERRAIN reference
-                    drawRect(color = Color(0xFF050608))
+                // Deep Obsidian Void base canvas
+                drawRect(color = Color(0xFF030406))
 
-                    // Mountain Terrain function reproducing the Joy Division / Mountain Terrain elevation
+                val currentNodes = mutableListOf<Pair<Creator, Offset>>()
+
+                if (visualizerMode == VisualizerMode.PYRAMID_DISPLACEMENT) {
+                    // =========================================================================
+                    // 1. PIRÁMIDE 3D SUBDIVIDIDA CON NOISE DISPLACEMENT Y LUZ DE BORDE (FRESNEL)
+                    // - Subdivisión en 32 anillos horizontales de 64 vértices c/u (2048 vértices)
+                    // - Desplazamiento procedural de vértices a lo largo de su normal
+                    // - Cuerpo negro absoluto (oclusión física sólida en el vacío)
+                    // - Iluminación de borde (Rim Light / Fresnel) en ángulos rasantes
+                    // =========================================================================
+                    val cx = width * 0.5f
+                    val cy = height * 0.52f
+                    val maxRadius = width.coerceAtMost(height) * 0.44f
+
+                    val totalRings = 32
+                    val ptsPerRing = 64
+
+                    // Viewing angles (isometric pitch tilted forward, subtle harmonic yaw drift)
+                    val pitch = 0.35f
+                    val yaw = 0.54f + 0.04f * sin(fluidTime.toDouble() * 0.5).toFloat()
+                    val cosP = cos(pitch.toDouble()).toFloat()
+                    val sinP = sin(pitch.toDouble()).toFloat()
+                    val cosY = cos(yaw.toDouble()).toFloat()
+                    val sinY = sin(yaw.toDouble()).toFloat()
+
+                    val slope = 0.68f // Pyramid side slope
+                    val normLen = sqrt(1f + slope * slope)
+
+                    val yApex = -0.62f * maxRadius
+                    val yBase = +0.58f * maxRadius
+
+                    // Render slices from top apex to wide base
+                    for (r in 0 until totalRings) {
+                        val v = r.toFloat() / (totalRings - 1) // 0.0 (apex) .. 1.0 (base)
+                        val y0 = yApex + v * (yBase - yApex)
+                        val w0 = v.pow(0.92f) * maxRadius
+
+                        val ringPath = Path()
+                        val ringFillPath = Path()
+
+                        var ringFresnelSum = 0f
+
+                        for (k in 0..ptsPerRing) {
+                            val theta = k.toFloat() * (2f * Math.PI.toFloat() / ptsPerRing)
+                            val ct = cos(theta.toDouble()).toFloat()
+                            val st = sin(theta.toDouble()).toFloat()
+
+                            // Rounded square cross-section (superellipse)
+                            val denom = (ct * ct * ct * ct + st * st * st * st).toDouble().pow(0.25).toFloat()
+                            val rSq = w0 / denom.coerceAtLeast(0.01f)
+
+                            // Un-displaced 3D coordinates
+                            val nx = ct / normLen
+                            val ny = slope / normLen
+                            val nz = st / normLen
+
+                            // Noise displacement along surface normal
+                            val h1 = sin(4f * theta + fluidTime * 1.3f + 4.2f * v)
+                            val h2 = cos(8f * theta - displacementHarmonic * 0.9f + 6f * v) * 0.5f
+                            val h3 = sin(12f * theta + fluidTime * 2.1f) * 0.25f
+                            val rawNoise = h1 + h2 + h3
+
+                            // Attenuate near apex and sharpen along the 4 edges
+                            val apexDamp = v.coerceIn(0f, 1f).pow(1.2f)
+                            val cornerMod = 0.65f + 0.35f * sin(4f * theta).toDouble().pow(2.0).toFloat()
+                            val breathAmp = 0.085f * maxRadius * (1.0f + 0.22f * sin(fluidTime.toDouble() * 0.8).toFloat())
+                            val disp = rawNoise * apexDamp * cornerMod * breathAmp
+
+                            // Displaced point in 3D
+                            val px = rSq * ct + nx * disp
+                            val py = y0 + ny * disp
+                            val pz = rSq * st + nz * disp
+
+                            // Rotate in 3D (yaw then pitch)
+                            val xRot = px * cosY + pz * sinY
+                            val zTmp = -px * sinY + pz * cosY
+                            val yRot = py * cosP - zTmp * sinP
+                            val zRot = py * sinP + zTmp * cosP
+
+                            // Perspective projection
+                            val persp = 2.8f / (2.8f + zRot / maxRadius)
+                            val sx = cx + xRot * persp
+                            val sy = cy + yRot * persp
+
+                            // Surface normal rotated to view-space
+                            val nzRot = ny * sinP + (-nx * sinY + nz * cosY) * cosP
+                            val ptFresnel = (1.0f - abs(nzRot).coerceIn(0f, 1f)).toDouble().pow(2.0).toFloat() * rimLightGlow
+                            ringFresnelSum += ptFresnel
+
+                            if (k == 0) {
+                                ringPath.moveTo(sx, sy)
+                                ringFillPath.moveTo(sx, sy)
+                            } else {
+                                ringPath.lineTo(sx, sy)
+                                ringFillPath.lineTo(sx, sy)
+                            }
+                        }
+
+                        ringPath.close()
+                        ringFillPath.close()
+
+                        // 1. Cuerpo Negro: Oclusión sólida en vacío
+                        drawPath(
+                            path = ringFillPath,
+                            color = Color(0xFF030406)
+                        )
+
+                        // 2. Luz de Borde (Fresnel Rim Light): Líneas que brillan en contorno
+                        val avgFresnel = (ringFresnelSum / (ptsPerRing + 1)).coerceIn(0.1f, 1.4f)
+                        val strokeAlpha = (0.22f + 0.78f * (avgFresnel / 1.4f)).coerceIn(0.18f, 1.0f)
+                        val strokeW = if (r % 3 == 0 || r == totalRings - 1) 1.25.dp.toPx() else 0.75.dp.toPx()
+
+                        // Outer specular glow pass on grazing edges
+                        if (avgFresnel > 0.75f) {
+                            drawPath(
+                                path = ringPath,
+                                color = Color.White.copy(alpha = 0.16f * rimLightGlow),
+                                style = Stroke(width = strokeW * 2.8f, cap = StrokeCap.Round)
+                            )
+                        }
+
+                        // Core rim contour stroke
+                        drawPath(
+                            path = ringPath,
+                            color = Ink.copy(alpha = strokeAlpha),
+                            style = Stroke(width = strokeW, cap = StrokeCap.Round)
+                        )
+                    }
+
+                    // Anchored Creator Nodes on Front-Facing Displaced Surface
+                    if (creators.isNotEmpty()) {
+                        val count = creators.size
+                        for (i in 0 until count) {
+                            val creator = creators[i]
+                            val nodeRingIdx = (11 + (i % 4) * 4).coerceIn(4, totalRings - 6)
+                            val vNode = nodeRingIdx.toFloat() / (totalRings - 1)
+                            val y0Node = yApex + vNode * (yBase - yApex)
+                            val w0Node = vNode.pow(0.92f) * maxRadius
+
+                            // Angular distribution across front-facing quadrant
+                            val thetaNode = (0.45f + (i.toFloat() / count.coerceAtLeast(1)) * 1.6f)
+                            val ctNode = cos(thetaNode.toDouble()).toFloat()
+                            val stNode = sin(thetaNode.toDouble()).toFloat()
+                            val denomNode = (ctNode * ctNode * ctNode * ctNode + stNode * stNode * stNode * stNode).toDouble().pow(0.25).toFloat()
+                            val rSqNode = w0Node / denomNode.coerceAtLeast(0.01f)
+
+                            val nxNode = ctNode / normLen
+                            val nyNode = slope / normLen
+                            val nzNode = stNode / normLen
+
+                            val h1Node = sin(4f * thetaNode + fluidTime * 1.3f + 4.2f * vNode)
+                            val dispNode = h1Node * vNode.pow(1.2f) * 0.085f * maxRadius
+
+                            val pxNode = rSqNode * ctNode + nxNode * dispNode
+                            val pyNode = y0Node + nyNode * dispNode
+                            val pzNode = rSqNode * stNode + nzNode * dispNode
+
+                            val xRotNode = pxNode * cosY + pzNode * sinY
+                            val zTmpNode = -pxNode * sinY + pzNode * cosY
+                            val yRotNode = pyNode * cosP - zTmpNode * sinP
+                            val zRotNode = pyNode * sinP + zTmpNode * cosP
+
+                            val perspNode = 2.8f / (2.8f + zRotNode / maxRadius)
+                            val sxNode = cx + xRotNode * perspNode
+                            val syNode = cy + yRotNode * perspNode
+
+                            val nodeOffset = Offset(sxNode, syNode)
+                            currentNodes.add(Pair(creator, nodeOffset))
+
+                            val isNodeSelected = selectedCreator?.creatorId == creator.creatorId
+                            val health = creator.calculateHealthStatus()
+                            val nodeColor = when (health) {
+                                HealthStatus.EN_RACHA_VERDE -> EmeraldGreen
+                                HealthStatus.MANTENIMIENTO_AMARILLO -> AmberGold
+                                HealthStatus.EN_RIESGO_ROJO -> CrimsonCoral
+                            }
+
+                            // Selection Crosshair & Concentric Reticle
+                            if (isNodeSelected) {
+                                drawCircle(
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    radius = 13.dp.toPx() * reticlePulse,
+                                    center = nodeOffset,
+                                    style = Stroke(width = 1.3.dp.toPx())
+                                )
+                                drawCircle(
+                                    color = Color(0xFF030406),
+                                    radius = 7.dp.toPx(),
+                                    center = nodeOffset
+                                )
+                            }
+
+                            // Core Node Dot with Specular Rim
+                            drawCircle(
+                                color = nodeColor,
+                                radius = if (isNodeSelected) 6.dp.toPx() else 4.2.dp.toPx(),
+                                center = nodeOffset
+                            )
+                            drawCircle(
+                                color = Color.White,
+                                radius = if (isNodeSelected) 2.2.dp.toPx() else 1.5.dp.toPx(),
+                                center = nodeOffset
+                            )
+                        }
+                    }
+
+                } else {
+                    // =========================================================================
+                    // 2. RELIEVE JOY DIVISION / MOUNTAIN TERRAIN (UNKNOWN PLEASURES)
+                    // =========================================================================
                     fun getMountainHeight(nx: Float, ny: Float): Float {
-                        // nx in 0..1, ny in 0..1 (0 = background/peak, 1 = foreground valley)
-                        // Central dominant peak around nx = 0.46
                         val peak1Dist = abs(nx - 0.46f)
                         val mainPeak = (1.0f - peak1Dist / 0.38f).coerceAtLeast(0f)
-                        val mainPeakSharp = mainPeak * mainPeak * (3f - 2f * mainPeak) // smoothstep
+                        val mainPeakSharp = mainPeak * mainPeak * (3f - 2f * mainPeak)
 
-                        // Secondary crags and ridges
                         val peak2Dist = abs(nx - 0.72f)
                         val subPeakRight = (1.0f - peak2Dist / 0.24f).coerceAtLeast(0f)
 
                         val peak3Dist = abs(nx - 0.22f)
                         val subPeakLeft = (1.0f - peak3Dist / 0.20f).coerceAtLeast(0f)
 
-                        // Subtle animated displacement wave
                         val waveDisplacement = sin(nx * 14.0 + fluidTime + ny * 6.0).toFloat() * 0.05f
                         val microCrags = (sin(nx * 32.0 + ny * 10.0) * cos(nx * 18.0)).toFloat() * 0.08f
 
                         val elevation = (mainPeakSharp * 0.85f + subPeakRight * 0.42f + subPeakLeft * 0.35f + microCrags + waveDisplacement)
                             .coerceAtLeast(0f)
 
-                        // Perspective modulation: peaks are taller in mid-back, tapering to lower ridges in foreground
                         val perspectiveFactor = (1.1f - ny * 0.65f).coerceIn(0.2f, 1.2f)
                         return elevation * perspectiveFactor
                     }
 
-                    // Render stacked topographic elevation lines from back to front
                     val totalRibs = 42
                     val stepSamples = 120
 
                     for (rib in 0 until totalRibs) {
-                        val ribNorm = rib.toFloat() / (totalRibs - 1) // 0.0 (farthest top) to 1.0 (nearest bottom)
+                        val ribNorm = rib.toFloat() / (totalRibs - 1)
                         val baseYForRib = height * 0.32f + ribNorm * (height * 0.58f)
 
                         val ribPath = Path()
@@ -304,21 +512,18 @@ fun PyramidalWaveHealthIndicator(
                             }
                         }
 
-                        // Close underfill path to mask ridges behind it (giving real 3D occlusion)
                         underfillPath.lineTo(width, height)
                         underfillPath.lineTo(0f, height)
                         underfillPath.close()
 
-                        // Dark fill beneath to create physical mountain silhouette occlusion
                         drawPath(
                             path = underfillPath,
-                            color = Color(0xFF050608)
+                            color = Color(0xFF030406)
                         )
 
-                        // Stroke the topographic contour line in crisp white/silver wireframe
                         val ribAlpha = when {
                             rib >= totalRibs - 4 -> 0.95f
-                            rib >= totalRibs / 2 -> 0.80f + 0.15f * (ribNorm)
+                            rib >= totalRibs / 2 -> 0.80f + 0.15f * ribNorm
                             else -> 0.45f + 0.40f * ribNorm
                         }
 
@@ -331,21 +536,13 @@ fun PyramidalWaveHealthIndicator(
                         )
                     }
 
-                    // Interactive Creator Nodes anchored onto the Topographic Mountain Crest
-                    val currentNodes = mutableListOf<Pair<Creator, Offset>>()
+                    // Interactive Nodes on Mountain Ridge
                     if (creators.isNotEmpty()) {
                         val count = creators.size
                         for (i in 0 until count) {
                             val creator = creators[i]
-                            // Position nodes across prominent ridge peaks and slopes
-                            val normX = if (count > 1) {
-                                0.15f + 0.70f * (i.toFloat() / (count - 1))
-                            } else {
-                                0.46f
-                            }
+                            val normX = if (count > 1) 0.15f + 0.70f * (i.toFloat() / (count - 1)) else 0.46f
                             val x = normX * width
-
-                            // Place onto a mid-front ridge contour so they are clear and touchable
                             val nodeRibNorm = 0.48f + (i % 3) * 0.12f
                             val baseYForNode = height * 0.32f + nodeRibNorm * (height * 0.58f)
                             val elevationNorm = getMountainHeight(normX, nodeRibNorm)
@@ -362,7 +559,6 @@ fun PyramidalWaveHealthIndicator(
                                 HealthStatus.EN_RIESGO_ROJO -> CrimsonCoral
                             }
 
-                            // Vertical topography probe guideline to base
                             drawLine(
                                 color = if (isNodeSelected) Color.White.copy(alpha = 0.7f) else Color(0x33FFFFFF),
                                 start = nodeOffset,
@@ -370,7 +566,6 @@ fun PyramidalWaveHealthIndicator(
                                 strokeWidth = if (isNodeSelected) 1.2.dp.toPx() else 0.6.dp.toPx()
                             )
 
-                            // Selection Crosshair & Concentric Reticle
                             if (isNodeSelected) {
                                 drawCircle(
                                     color = Color.White.copy(alpha = 0.6f),
@@ -379,20 +574,18 @@ fun PyramidalWaveHealthIndicator(
                                     style = Stroke(width = 1.3.dp.toPx())
                                 )
                                 drawCircle(
-                                    color = Color(0xFF050608),
+                                    color = Color(0xFF030406),
                                     radius = 7.dp.toPx(),
                                     center = nodeOffset
                                 )
                             }
 
-                            // Core Node Dot with Rim Highlight
                             drawCircle(
                                 color = nodeColor,
                                 radius = if (isNodeSelected) 5.5.dp.toPx() else 4.dp.toPx(),
                                 center = nodeOffset
                             )
 
-                            // Specular white center spark
                             drawCircle(
                                 color = Color.White,
                                 radius = if (isNodeSelected) 2.2.dp.toPx() else 1.5.dp.toPx(),
@@ -400,36 +593,70 @@ fun PyramidalWaveHealthIndicator(
                             )
                         }
                     }
-                    nodePositions = currentNodes
                 }
 
-                // Top CAD Overlay Indicator
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "MOUNTAIN TERRAIN // TOPOGRAFÍA JOY DIVISION",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = Ceniza,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 8.5.sp
-                        )
-                    )
-
-                    Text(
-                        text = if (selectedCreator == null) "TOCA UN NODO PARA REVELAR" else "NODO ACTIVO",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = if (selectedCreator == null) Papel.copy(alpha = 0.8f) else EmeraldGreen,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 8.5.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                }
+                nodePositions = currentNodes
             }
+
+            // Top CAD Overlay Indicator with Mode Switcher
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Interactive Mode Selector Pill
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (visualizerMode == VisualizerMode.PYRAMID_DISPLACEMENT) Ink else Color.Transparent)
+                            .border(0.6.dp, if (visualizerMode == VisualizerMode.PYRAMID_DISPLACEMENT) Ink else Hairline, RoundedCornerShape(12.dp))
+                            .clickable { visualizerMode = VisualizerMode.PYRAMID_DISPLACEMENT }
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = "Pirámide 3D (Rim Light)",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = if (visualizerMode == VisualizerMode.PYRAMID_DISPLACEMENT) PaletteVoid else Mist,
+                                fontSize = 10.sp,
+                                fontWeight = if (visualizerMode == VisualizerMode.PYRAMID_DISPLACEMENT) FontWeight.Bold else FontWeight.Normal
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (visualizerMode == VisualizerMode.JOY_DIVISION_TERRAIN) Ink else Color.Transparent)
+                            .border(0.6.dp, if (visualizerMode == VisualizerMode.JOY_DIVISION_TERRAIN) Ink else Hairline, RoundedCornerShape(12.dp))
+                            .clickable { visualizerMode = VisualizerMode.JOY_DIVISION_TERRAIN }
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = "Joy Division",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = if (visualizerMode == VisualizerMode.JOY_DIVISION_TERRAIN) PaletteVoid else Mist,
+                                fontSize = 10.sp,
+                                fontWeight = if (visualizerMode == VisualizerMode.JOY_DIVISION_TERRAIN) FontWeight.Bold else FontWeight.Normal
+                            )
+                        )
+                    }
+                }
+
+                Text(
+                    text = if (selectedCreator == null) "Toca un nodo" else "Nodo activo",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = if (selectedCreator == null) Mist else EmeraldGreen,
+                        fontSize = 10.5.sp,
+                        fontWeight = if (selectedCreator == null) FontWeight.Normal else FontWeight.Bold
+                    )
+                )
+            }
+        }
 
         // Tap-to-Reveal UX: Detail card is hidden by default and smoothly expands on node tap
         AnimatedVisibility(
@@ -659,82 +886,93 @@ private fun FocusedCreatorInspectorCard(
             // Quick One-Tap Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // Botón principal: Blanco y redondo
                 Button(
                     onClick = onHableHoyClick,
                     modifier = Modifier
-                        .weight(1f)
-                        .height(36.dp),
-                    shape = RoundedCornerShape(4.dp),
+                        .weight(1.1f)
+                        .height(38.dp),
+                    shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (creator.daysSinceContact() == 0L) Color(0xFF14241B) else ElevatedSlate,
-                        contentColor = if (creator.daysSinceContact() == 0L) EmeraldGreen else Papel
+                        containerColor = if (creator.daysSinceContact() == 0L) Color(0xFF1E2E24) else Ink,
+                        contentColor = if (creator.daysSinceContact() == 0L) EmeraldGreen else PaletteVoid
                     ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        0.6.dp,
-                        if (creator.daysSinceContact() == 0L) EmeraldGreen else CardBorder
-                    )
+                    border = if (creator.daysSinceContact() == 0L) {
+                        androidx.compose.foundation.BorderStroke(0.6.dp, EmeraldGreen)
+                    } else null
                 ) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Hablé hoy",
-                        modifier = Modifier.size(13.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = if (creator.daysSinceContact() == 0L) "Al día" else "Hablé hoy",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     )
                 }
 
+                // Botón secundario: Contorno fino (Hairline)
                 Button(
                     onClick = onAuditeLiveClick,
                     modifier = Modifier
                         .weight(1f)
-                        .height(36.dp),
-                    shape = RoundedCornerShape(4.dp),
+                        .height(38.dp),
+                    shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = ElevatedSlate,
-                        contentColor = Papel
+                        containerColor = Color.Transparent,
+                        contentColor = Ink
                     ),
-                    border = androidx.compose.foundation.BorderStroke(0.6.dp, CardBorder)
+                    border = androidx.compose.foundation.BorderStroke(0.6.dp, Hairline)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Videocam,
                         contentDescription = "Auditar",
-                        modifier = Modifier.size(13.dp),
-                        tint = Papel
+                        modifier = Modifier.size(14.dp),
+                        tint = Ink
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "Audité LIVE",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                        text = "Auditar",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal
+                        )
                     )
                 }
 
+                // Botón secundario: Contorno fino (Hairline)
                 Button(
                     onClick = onQueDecirleClick,
                     modifier = Modifier
-                        .weight(1f)
-                        .height(36.dp),
-                    shape = RoundedCornerShape(4.dp),
+                        .weight(1.1f)
+                        .height(38.dp),
+                    shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = ElevatedSlate,
-                        contentColor = Papel
+                        containerColor = Color.Transparent,
+                        contentColor = Ink
                     ),
-                    border = androidx.compose.foundation.BorderStroke(0.6.dp, CardBorderSubtle)
+                    border = androidx.compose.foundation.BorderStroke(0.6.dp, Hairline)
                 ) {
                     Icon(
                         imageVector = Icons.Default.AutoAwesome,
                         contentDescription = "Qué decirle",
-                        modifier = Modifier.size(13.dp),
-                        tint = Papel
+                        modifier = Modifier.size(14.dp),
+                        tint = Ink
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "Qué decirle",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal
+                        )
                     )
                 }
             }

@@ -267,11 +267,9 @@ private fun SuggestionCard(
 fun AuditLiveDialog(
     creator: Creator,
     onDismiss: () -> Unit,
-    onConfirm: (String, Boolean) -> Unit,
-    onStartVoiceTranscription: () -> Unit,
-    voiceTranscribedText: String? = null
+    onConfirm: (String, Boolean) -> Unit
 ) {
-    var quickNote by remember { mutableStateOf(voiceTranscribedText ?: "") }
+    var quickNote by remember { mutableStateOf("") }
     var screenshotsCount by remember { mutableStateOf(creator.metricsScreenshotsCount) }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -366,37 +364,12 @@ fun AuditLiveDialog(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Action Bar for note: Dictar por voz / Adjuntar captura
+                // Action Bar for note: Adjuntar captura
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Voice Dictate button
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(ElectricSky.copy(alpha = 0.12f))
-                            .clickable(onClick = onStartVoiceTranscription)
-                            .padding(horizontal = 8.dp, vertical = 6.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Mic,
-                                contentDescription = "Dictar",
-                                tint = ElectricSky,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Dictar Nota (Gemini Transcribe)",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = ElectricSky,
-                                    fontSize = 10.5.sp
-                                )
-                            )
-                        }
-                    }
 
                     // Screenshots Counter incrementer
                     Box(

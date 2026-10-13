@@ -69,8 +69,6 @@ import com.example.ui.screens.CreatorDetailSheet
 import com.example.ui.screens.ManagerScreen
 import com.example.ui.screens.RecruiterScreen
 import com.example.ui.screens.TacticalChatScreen
-import com.example.ui.screens.VoiceStudioScreen
-import com.example.ui.screens.VoiceTranscriptionDialog
 import com.example.ui.theme.AmberGold
 import com.example.ui.theme.CardBorder
 import com.example.ui.theme.Ceniza
@@ -81,6 +79,7 @@ import com.example.ui.theme.ElevatedSlate
 import com.example.ui.theme.ElevatedSlateVariant
 import com.example.ui.theme.EmeraldGreen
 import com.example.ui.theme.MyApplicationTheme
+import com.example.ui.theme.PaletteVoid
 import com.example.ui.theme.PantallaApagada
 import com.example.ui.theme.Papel
 import com.example.ui.theme.TextMuted
@@ -123,14 +122,12 @@ fun AngelVoiceMainContent(viewModel: AngelVoiceViewModel) {
 
     var activeTab by remember { mutableStateOf(NavigationTab.DASHBOARD) }
     var showAddCreatorDialog by remember { mutableStateOf(false) }
-    var showVoiceTranscriptionDialog by remember { mutableStateOf(false) }
-    var voiceTargetCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
-    var voiceTextForAudit by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .background(DeepCharcoal),
+            .background(PaletteVoid),
+        containerColor = Color.Transparent,
         topBar = {
             AngelVoiceHeader(
                 currentRole = currentRole,
@@ -206,20 +203,11 @@ fun AngelVoiceMainContent(viewModel: AngelVoiceViewModel) {
     auditCreator?.let { creator ->
         AuditLiveDialog(
             creator = creator,
-            voiceTranscribedText = voiceTextForAudit,
             onDismiss = {
-                voiceTextForAudit = null
                 viewModel.closeAuditLiveDialog()
             },
-            onConfirm = { note, isVoice ->
-                voiceTextForAudit = null
-                viewModel.confirmAuditLive(creator.creatorId, note, isVoice)
-            },
-            onStartVoiceTranscription = {
-                voiceTargetCallback = { text ->
-                    voiceTextForAudit = text
-                }
-                showVoiceTranscriptionDialog = true
+            onConfirm = { note, isLiveAudit ->
+                viewModel.confirmAuditLive(creator.creatorId, note, isLiveAudit)
             }
         )
     }
@@ -232,13 +220,7 @@ fun AngelVoiceMainContent(viewModel: AngelVoiceViewModel) {
             onDismiss = { viewModel.closeCreatorDetail() },
             onAddNote = { text, isVoice -> viewModel.addBackstageNote(creator.creatorId, text, isVoice) },
             onPromoteLeague = { viewModel.promoteLeague(creator) },
-            onIncrementScreenshot = { viewModel.incrementScreenshot(creator.creatorId) },
-            onStartVoiceTranscription = {
-                voiceTargetCallback = { text ->
-                    viewModel.addBackstageNote(creator.creatorId, text, true)
-                }
-                showVoiceTranscriptionDialog = true
-            }
+            onIncrementScreenshot = { viewModel.incrementScreenshot(creator.creatorId) }
         )
     }
 
@@ -257,19 +239,6 @@ fun AngelVoiceMainContent(viewModel: AngelVoiceViewModel) {
             onDismiss = { showAddCreatorDialog = false },
             onConfirm = { name, handle, country, niche, league, cadence, phone, isProspect ->
                 viewModel.addNewCreator(name, handle, country, niche, league, cadence, phone, isProspect)
-            }
-        )
-    }
-
-    // Modal: Transcripción de Audio (gemini-3.5-transcribe)
-    if (showVoiceTranscriptionDialog) {
-        VoiceTranscriptionDialog(
-            onDismiss = { showVoiceTranscriptionDialog = false },
-            onTranscriptionComplete = { text ->
-                voiceTargetCallback?.invoke(text)
-            },
-            onTranscribeWithGemini = { audioBytes, onComplete ->
-                viewModel.transcribeAudioRecord(audioBytes, onComplete)
             }
         )
     }

@@ -87,7 +87,7 @@ fun TacticalChatScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(DeepCharcoal)
+            .background(Color.Transparent)
             .testTag("pantalla_asistente_ia")
     ) {
         // Master 2026 Hardware Deck Header

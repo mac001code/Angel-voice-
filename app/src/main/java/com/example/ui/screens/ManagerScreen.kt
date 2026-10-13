@@ -60,6 +60,10 @@ import com.example.ui.theme.DeepCharcoal
 import com.example.ui.theme.ElevatedSlate
 import com.example.ui.theme.ElevatedSlateVariant
 import com.example.ui.theme.EmeraldGreen
+import com.example.ui.theme.Hairline
+import com.example.ui.theme.Ink
+import com.example.ui.theme.Mist
+import com.example.ui.theme.PaletteVoid
 import com.example.ui.theme.PantallaApagada
 import com.example.ui.theme.Papel
 import com.example.ui.theme.TextMuted
@@ -282,12 +286,12 @@ fun ManagerScreen(
             }
         }
 
-        // Floating Action Button con esquinas arquitectónicas (6dp) y alto contraste
+        // Floating Action Button principal: Blanco y redondo
         FloatingActionButton(
             onClick = onOpenAddCreator,
-            containerColor = Papel,
-            contentColor = PantallaApagada,
-            shape = RoundedCornerShape(6.dp),
+            containerColor = Ink,
+            contentColor = PaletteVoid,
+            shape = CircleShape,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(20.dp)

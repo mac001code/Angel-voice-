@@ -86,8 +86,7 @@ fun CreatorDetailSheet(
     onDismiss: () -> Unit,
     onAddNote: (String, Boolean) -> Unit,
     onPromoteLeague: () -> Unit,
-    onIncrementScreenshot: () -> Unit,
-    onStartVoiceTranscription: () -> Unit
+    onIncrementScreenshot: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
@@ -328,24 +327,12 @@ fun CreatorDetailSheet(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "BITÁCORA BACKSTAGE ('PENSAMIENTO')",
+                        text = "BITÁCORA BACKSTAGE",
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
                             color = TextSecondary
                         )
-                    )
-                }
-
-                IconButton(
-                    onClick = onStartVoiceTranscription,
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Mic,
-                        contentDescription = "Dictar",
-                        tint = ElectricSky,
-                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
@@ -450,23 +437,7 @@ private fun NoteItem(note: BackstageNote) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (note.isVoiceDictated) {
-                    Icon(
-                        imageVector = Icons.Default.GraphicEq,
-                        contentDescription = "Voz",
-                        tint = ElectricSky,
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Dictado por Voz",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = ElectricSky,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                } else if (note.isLiveAudit) {
+                if (note.isLiveAudit) {
                     Icon(
                         imageVector = Icons.Default.Videocam,
                         contentDescription = "LIVE",

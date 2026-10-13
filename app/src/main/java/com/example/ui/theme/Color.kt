@@ -3,54 +3,56 @@ package com.example.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // =======================================================================
-// DIRECCIÓN DE ARTE 2026 // PALETA INDUSTRIAL & TÁCTIL (IMAGE PALETTE)
+// PALETA DE DISEÑO SOFISTICADA: VOID, INK, MIST, HAIRLINE
 // =======================================================================
 
-// 1. Pantalla apagada (#0B0B0C) - "El negro de un monitor de los 2000. Fondo principal."
-val PantallaApagada = Color(0xFF0B0B0C)
-val DeepCharcoal = PantallaApagada // Fondo principal
+// 1. Void (#000000) - Fondo puro absoluto
+val PaletteVoid = Color(0xFF000000)
+val PantallaApagada = PaletteVoid
+val DeepCharcoal = PaletteVoid
 
-// Superficies de Carcasa e Instrumental de Hardware
-val ChassisDark = Color(0xFF121214)         // Carcasa oscura base
-val ChassisDeck = Color(0xFF18181B)         // Panel elevado / Deck de controles
-val ElevatedSlate = ChassisDark             // Contenedor principal de tarjetas
-val ElevatedSlateVariant = ChassisDeck      // Contenedor elevado / sub-paneles
+// 2. Ink (#F4F4F2) - Texto principal, líneas y botón primario
+val Ink = Color(0xFFF4F4F2)
+val Papel = Ink
+val TextPrimary = Ink
+val White = Ink
+val HoloDotWhite = Ink
 
-// 2. Papel (#EEE8E4) - "El blanco que no es puro. Fondo de impresos y textos."
-val Papel = Color(0xFFEEE8E4)
-val TextPrimary = Papel                     // Tipografía de alto contraste
-val HoloDotWhite = Papel                    // Puntos de luz y fósforo activo
-val White = Papel
+// 3. Mist (#8C8F94) - Texto secundario, subtítulos y acentos suaves
+val Mist = Color(0xFF8C8F94)
+val TextSecondary = Mist
+val TextMuted = Mist
+val Ceniza = Mist
+val Aluminio = Mist
+val HoloDotSilver = Mist
+val HoloDotDim = Color(0x408C8F94)
 
-// 3. Carcasa (#D9D6CF) - "El gris claro del plástico viejo. Fichas del archivo."
-val Carcasa = Color(0xFFD9D6CF)
-val CarcasaContainer = Color(0x1AD9D6CF)
+// 4. Hairline (blanco al 14%) - Bordes finos y contornos
+val Hairline = Color(0x24FFFFFF) // 14% de blanco para bordes sutiles de alta fidelidad
+val CardBorder = Hairline
+val CardBorderSubtle = Color(0x33FFFFFF)
+val HoloLine = Color(0x24FFFFFF)
+val HoloLineBright = Color(0x80F4F4F2)
 
-// 4. Aluminio (#A9ABAE) - "Plata gastada. Detalles y líneas."
-val Aluminio = Color(0xFFA9ABAE)
-val HoloDotSilver = Aluminio
-val CardBorder = Color(0x33A9ABAE)          // Línea hairline de aluminio pulido
-val CardBorderSubtle = Color(0x66A9ABAE)    // Línea de borde activa
-val HoloLine = Color(0x26A9ABAE)            // Líneas de osciloscopio / LiDAR
-val HoloLineBright = Color(0x80A9ABAE)      // Líneas de cresta activa
+// Superficies de Chasis / Paneles (sobrios sobre Void)
+val ChassisDark = Color(0xFF0A0A0C)
+val ChassisDeck = Color(0xFF111215)
+val ElevatedSlate = Color(0xFF0C0D0F)
+val ElevatedSlateVariant = Color(0xFF141518)
+val Carcasa = Color(0xFF1E1F23)
+val CarcasaContainer = Color(0x228C8F94)
 
-// 5. Ceniza (#5A5852) - "Texto secundario sobre papel."
-val Ceniza = Color(0xFF5A5852)
-val TextSecondary = Color(0xFF8E8D88)       // Lectura secundaria táctil
-val TextMuted = Ceniza                      // Metadatos, ejes CAD y timestamps
-val HoloDotDim = Color(0x40A9ABAE)          // Puntos pasivos de matriz
+// Acentos funcionales de estado (sobrios y controlados)
+val EmeraldGreen = Color(0xFF4ADE80)
+val EmeraldGreenContainer = Color(0x1A4ADE80)
 
-// Indicadores LED de Instrumental (Micro-fósforos industriales)
-val EmeraldGreen = Color(0xFF4ADE80)        // Fósforo verde (Racha)
-val EmeraldGreenContainer = Color(0x204ADE80)
+val AmberGold = Color(0xFFFBBF24)
+val AmberGoldContainer = Color(0x1AFBBF24)
 
-val AmberGold = Color(0xFFFBBF24)           // Fósforo ámbar (Mantenimiento)
-val AmberGoldContainer = Color(0x20FBBF24)
+val CrimsonCoral = Color(0xFFF87171)
+val CrimsonCoralContainer = Color(0x1AF87171)
 
-val CrimsonCoral = Color(0xFFF87171)        // Fósforo coral (Riesgo)
-val CrimsonCoralContainer = Color(0x20F87171)
+val ElectricSky = Ink
+val ElectricSkyContainer = Color(0x1AF4F4F2)
 
-val ElectricSky = Aluminio                  // Reemplazo de azules por aluminio pulido
-val ElectricSkyContainer = Color(0x1AA9ABAE)
-
-val Black = PantallaApagada
+val Black = PaletteVoid

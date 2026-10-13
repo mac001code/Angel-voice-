@@ -93,7 +93,7 @@ fun RecruiterScreen(
     val observacionCount = prospects.count { it.lifecyclePhase == LifecyclePhase.PROSPECCION }
     val induccionCount = prospects.count { it.lifecyclePhase == LifecyclePhase.INDUCCION }
 
-    Box(modifier = modifier.fillMaxSize().background(DeepCharcoal)) {
+    Box(modifier = modifier.fillMaxSize().background(Color.Transparent)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
